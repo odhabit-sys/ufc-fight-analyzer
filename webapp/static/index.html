@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fight Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#/"><span class="brand-mark"><i></i><i></i></span>FIGHT ANALYZER</a>
+  <div class="topbar-file" id="topbar-file"></div>
+  <a class="btn btn-secondary btn-sm" id="btn-new" href="#/" hidden>
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>New fight</a>
+</header>
+
+<!-- ============ UPLOAD ============ -->
+<main class="view" id="view-upload" hidden>
+  <section class="upload">
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/*" hidden>
+      <span class="dz-corner tl"></span><span class="dz-corner tr"></span>
+      <span class="dz-corner bl"></span><span class="dz-corner br"></span>
+      <svg class="dz-icon" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="11" width="36" height="26" rx="2"/><path d="M20 19.5v9l8-4.5z"/>
+      </svg>
+      <div class="dz-title">Drop your fight here</div>
+      <span class="btn btn-primary btn-lg">Select video</span>
+      <div class="dz-hint">MP4 or MOV · processed locally on this computer</div>
+      <div class="dz-progress" id="upload-progress" hidden>
+        <div class="dz-progress-label"><span>Uploading</span><span id="upload-pct">0%</span></div>
+        <div class="bar"><div class="bar-fill" id="upload-bar"></div></div>
+      </div>
+      <div class="dz-error" id="upload-error" hidden></div>
+    </label>
+    <ol class="how">
+      <li><b>1</b><span>Upload a fight video</span></li>
+      <li><b>2</b><span>Pick <em class="red">Fighter 1</em> and <em class="blue">Fighter 2</em></span></li>
+      <li><b>3</b><span>Watch the synced analysis</span></li>
+    </ol>
+    <div class="recent" id="recent" hidden>
+      <div class="label">Recent analyses</div>
+      <ul id="recent-list"></ul>
+    </div>
+  </section>
+</main>
+
+<!-- ============ PROCESSING ============ -->
+<main class="view" id="view-processing" hidden>
+  <section class="processing">
+    <div class="proc-preview">
+      <div class="proc-frame" id="proc-frame">
+        <video class="proc-video" id="proc-backdrop" muted playsinline preload="auto"></video>
+        <canvas class="proc-canvas" id="proc-canvas"></canvas>
+        <div class="proc-scan"></div>
+        <div class="proc-frame-hud">
+          <span class="live"><i></i>LIVE DETECTION</span>
+          <span id="proc-frame-info"></span>
+        </div>
+        <div class="proc-placeholder" id="proc-placeholder">Preparing the video…</div>
+      </div>
+      <p class="proc-caption" id="proc-caption">Every person the pose model finds in the frame it is processing right now.
+        Fighters are identified after this step, when you select them.</p>
+    </div>
+    <div class="proc-card">
+      <div class="label">Analyzing fight</div>
+      <h1 class="proc-name" id="proc-name"></h1>
+      <ol class="stages" id="stages"></ol>
+      <div class="proc-overall">
+        <div class="proc-meta"><span id="proc-pct">0%</span><span id="proc-eta"></span></div>
+        <div class="bar bar-lg"><div class="bar-fill" id="proc-bar"></div></div>
+      </div>
+      <div class="dz-error" id="proc-error" hidden></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ SELECT FIGHTERS ============ -->
+<main class="view" id="view-select" hidden>
+  <section class="select">
+    <div class="sel-head">
+      <div>
+        <div class="label">Before we analyze</div>
+        <h1 class="sel-title">Select the fighters</h1>
+      </div>
+      <ol class="sel-steps" id="sel-prompt"></ol>
+    </div>
+    <div class="sel-stage" id="sel-stage">
+      <img id="sel-img" alt="Frame from the fight with the detected people">
+      <div class="sel-boxes" id="sel-boxes"></div>
+      <div class="sel-loading" id="sel-loading">Loading frames…</div>
+    </div>
+    <div class="sel-bar">
+      <div class="sel-frames-wrap">
+        <div class="label">Both fighters not clearly visible? Try another frame</div>
+        <div class="sel-frames" id="sel-frames"></div>
+      </div>
+      <div class="sel-actions">
+        <a class="btn btn-ghost" id="sel-cancel" hidden>Cancel</a>
+        <button class="btn btn-secondary" id="sel-reset">Reset</button>
+        <button class="btn btn-primary btn-lg" id="sel-start" disabled>Start analysis
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3l6 5-6 5"/></svg></button>
+      </div>
+    </div>
+    <div class="dz-error" id="sel-error" hidden></div>
+  </section>
+</main>
+
+<!-- ============ VIEWER ============ -->
+<main class="view viewer" id="view-viewer" hidden>
+  <section class="scoreboard">
+    <div class="sb-fighter sb-red">
+      <span class="sb-corner"><i></i>Fighter 1<span class="c-long">&nbsp;· Red corner</span></span>
+      <div class="sb-name" id="name-0" contenteditable spellcheck="false" title="Click to rename"></div>
+    </div>
+    <div class="sb-meter">
+      <div class="sb-label">Momentum <span class="tag" title="A computer-vision activity score, not an official result or win probability">Experimental</span></div>
+      <div class="sb-row">
+        <div class="sb-pct red" id="mom-0">50%</div>
+        <div class="mom-bar"><div class="mom-fill" id="mom-fill"></div><div class="mom-mid"></div></div>
+        <div class="sb-pct blue" id="mom-1">50%</div>
+      </div>
+    </div>
+    <div class="sb-fighter sb-blue">
+      <span class="sb-corner">Fighter 2<span class="c-long">&nbsp;· Blue corner</span><i></i></span>
+      <div class="sb-name" id="name-1" contenteditable spellcheck="false" title="Click to rename"></div>
+    </div>
+  </section>
+
+  <section class="arena">
+    <aside class="stats" id="stats-0"></aside>
+    <div class="stage" id="stage">
+      <video id="video" playsinline preload="auto"></video>
+      <canvas id="overlay"></canvas>
+      <div class="stage-hud">
+        <div class="hud-tl"><span class="rec"></span>ANALYSIS</div>
+        <div class="hud-tr" id="hud-time">00:00.0</div>
+        <div class="hud-bl" id="hud-range"></div>
+      </div>
+      <div class="banner" id="banner" hidden>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4 7.5L8 11.5 12 7.5M3 14h10"/></svg>
+        <div><div class="banner-title"></div><div class="banner-sub"></div></div>
+      </div>
+      <button class="big-play" id="big-play" aria-label="Play"></button>
+    </div>
+    <aside class="stats" id="stats-1"></aside>
+  </section>
+
+  <section class="transport">
+    <div class="tp-row">
+      <button class="play" id="btn-play" aria-label="Play / pause"></button>
+      <div class="time"><span id="t-cur">00:00.0</span><span class="sep">/</span><span id="t-dur">00:00.0</span></div>
+      <select class="select-sm" id="speed" aria-label="Playback speed">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+      </select>
+      <div class="tp-group" role="group" aria-label="Overlay">
+        <span class="tp-label">Overlay</span>
+        <button class="toggle" id="tg-skel" aria-pressed="true">Skeletons</button>
+        <button class="toggle" id="tg-fx" aria-pressed="true">Strike FX</button>
+        <button class="toggle" id="tg-range" aria-pressed="true">Range</button>
+      </div>
+      <div class="tp-spacer"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-swap" title="Swap red / blue corner">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5h9l-2.5-2.5M13 11H4l2.5 2.5"/></svg>Swap corners</button>
+      <a class="btn btn-secondary btn-sm" id="btn-change" title="Pick the two fighters again (no re-upload)">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.5" cy="5" r="2.2"/><circle cx="10.5" cy="5" r="2.2"/><path d="M1.5 13c.5-2.4 2-3.6 4-3.6s3.5 1.2 4 3.6M10.5 9.4c2 0 3.5 1.2 4 3.6"/></svg>Change fighters</a>
+    </div>
+    <div class="tl-head">
+      <div class="label">Momentum timeline <span class="hint">click or drag to seek · click a marker to jump to it</span></div>
+      <div class="legend">
+        <span><i class="lg lg-strike"></i>Strike</span><span><i class="lg lg-kick"></i>Kick</span>
+        <span><i class="lg lg-kd"></i>Knockdown</span><span><i class="lg lg-ex"></i>High activity</span>
+      </div>
+    </div>
+    <div class="timeline" id="timeline">
+      <canvas id="tl-canvas"></canvas>
+      <div class="tl-tip" id="tl-tip" hidden></div>
+    </div>
+  </section>
+
+  <section class="events-sec">
+    <div class="sec-head">
+      <div class="label">Detected events</div>
+      <div class="filters" id="filters">
+        <button class="fchip" data-f="all" aria-pressed="true">All <span></span></button>
+        <button class="fchip" data-f="strike">Strikes <span></span></button>
+        <button class="fchip" data-f="kick">Kicks <span></span></button>
+        <button class="fchip" data-f="big">Knockdowns &amp; takedowns <span></span></button>
+        <button class="fchip" data-f="exchange">High activity <span></span></button>
+      </div>
+    </div>
+    <ul class="events" id="events"></ul>
+    <p class="footnote"><b>?</b> = the fist or foot overlapped the opponent in 2D at full extension; contact is not confirmed.
+      Momentum is an experimental computer-vision activity score, not an official result or win probability.</p>
+  </section>
+</main>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
