@@ -1,0 +1,6 @@
+.venv/
+output/
+videos/
+*.pt
+__pycache__/
+data/
