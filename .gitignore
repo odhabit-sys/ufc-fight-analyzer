@@ -1,6 +1,55 @@
-.venv/
-output/
+# --- Fight videos & media (anywhere in the repo) -----------------------------
 videos/
-*.pt
-__pycache__/
+*.mp4
+*.mov
+*.m4v
+*.mkv
+*.webm
+*.avi
+
+# --- Analysis data & outputs ---------------------------------------------------
+# web app jobs: uploads, transcoded videos, pose caches, analysis.json
 data/
+# CLI renders, signal/event exports, pose caches
+output/
+*.pkl
+*.pose.pkl
+
+# --- Model weights ---------------------------------------------------------------
+*.pt
+*.pth
+*.onnx
+*.engine
+*.mlpackage/
+*.mlmodel
+weights/
+
+# --- Python environments & caches ----------------------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- Temporary & log files ---------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.log
+*.swp
+*~
+
+# --- Secrets & machine-specific settings -------------------------------------------
+.env
+.env.*
+*.env
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+node_modules/
