@@ -245,7 +245,10 @@ class JobManager:
                "-vf", vf, "-fps_mode", "cfr", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
                "-progress", "pipe:1", "-nostats", str(dst)]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # explicit UTF-8: the platform default (e.g. cp1252 on Windows) can fail on bytes in
+        # ffmpeg's messages, such as non-English file names
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             encoding="utf-8", errors="replace")
         for line in p.stdout:
             m = re.match(r"out_time_us=(\d+)", line.strip())
             if m and duration:

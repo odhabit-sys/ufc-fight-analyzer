@@ -1,0 +1,9 @@
+# Normalise text files to LF in the repository.
+* text=auto
+
+# Shell scripts must keep LF everywhere (a CRLF run.sh fails with "bad interpreter").
+*.sh text eol=lf
+
+# Windows batch files are stored with CRLF exactly as committed, so they are correct for
+# both "git clone" and GitHub's "Download ZIP" (cmd.exe misparses LF-only batch files).
+*.bat -text

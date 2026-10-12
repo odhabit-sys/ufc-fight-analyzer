@@ -1,25 +1,118 @@
 # UFC / MMA Fight Analyzer
 
-Turns a prerecorded fight video into a computer-vision "fight analysis" video: a pose skeleton on each
-fighter, persistent Fighter 1 / Fighter 2 identities, live signals, and an **experimental momentum
-index** (e.g. `63% / 37%`) that comes from things the system actually measures. It is **not** a win probability.
+A local web app that analyses a prerecorded MMA fight video with computer vision. You upload a fight,
+click which person is Fighter 1 (red) and Fighter 2 (blue), and then watch the fight in the browser with
+pose skeletons, per-fighter stats, detected events and an **experimental momentum index**
+(e.g. `63% / 37%`) synced to the video. The momentum index comes only from things the system measures;
+it is **not** a win probability or an official result.
 
-```
-video ──► Stage 1: EXTRACT (slow, cached)          ──► Stage 2: RENDER (fast, re-run freely)
-          YOLO11-pose: boxes + 17 keypoints/person      two-fighter identity tracking
-          camera motion (optical flow on background)    keypoint smoothing (One Euro)
-          scene-cut detection                           signals → events → momentum
-                                                        HUD → H.264 mp4 (+ original audio)
-                                                        CSV + JSON data export
-```
+Everything runs on your own computer. Nothing is uploaded anywhere.
 
-## Web app (main experience)
-```bash
-./run.sh
-```
-This opens http://127.0.0.1:8000. Upload a fight. After pose detection you click Fighter 1 (red) and
-Fighter 2 (blue) on a frame from the fight; the analysis then opens in the interactive viewer. Skeletons,
-stats, momentum and events are all drawn live from the analysis data, synced to the frame the video is showing.
+## Requirements
+
+| | |
+|---|---|
+| **Operating system** | Windows 10/11 (64-bit, x64), macOS 14+ on Apple Silicon (M1 or newer), or 64-bit Linux |
+| **Python** | 3.12, 3.13 or 3.14, 64-bit (3.13 recommended). Python 3.15 is not supported yet: PyTorch has no 3.15 build |
+| **Disk space** | about 3 GB (Python packages ~2 GB, model 40 MB, plus your analysed videos) |
+| **Internet** | needed on the first start only (downloads ~1 GB of packages and the 40 MB pose model) |
+| **FFmpeg** | nothing to install: it is bundled with the Python packages |
+
+Not supported: Intel Macs (PyTorch no longer publishes Intel-Mac builds) and Windows on ARM.
+
+Speed: on an Apple M1, detection runs at about 9 video frames per second (a 2-minute fight takes about 8
+minutes). Windows and Linux run the pose model on the CPU (NVIDIA GPUs are not used yet), which is much
+slower: on 4-core Windows cloud machines detection ran at about 1.2 to 3 frames per second, so a 2-minute
+fight takes roughly 20 to 50 minutes there. A recent desktop CPU with more cores will be faster. Detection
+runs only once per video: picking different fighters afterwards takes seconds.
+
+## Windows
+
+1. **Install Python 3.13.** On https://www.python.org/downloads/windows/ find the newest **Python 3.13.x**
+   release (the "Latest Python 3 Release" at the top is 3.15, which PyTorch does not support yet) and
+   download its **Windows installer (64-bit)**. Run it, tick **"Add python.exe to PATH"** on the first
+   screen, then click *Install Now*.
+   If you use the newer *Python install manager* instead, run `py install 3.13` in a terminal (with no
+   Python installed at all, `run.bat` lets the install manager fetch 3.13 by itself).
+   Other Python versions can stay installed; `run.bat` picks 3.13 automatically.
+2. **Download the project.** Either
+   - on the GitHub page click **Code → Download ZIP**, then right-click the ZIP and choose
+     **Extract All…** (do not run it from inside the ZIP), or
+   - with Git: `git clone https://github.com/odhabit-sys/ufc-fight-analyzer.git`
+
+   Keep the folder somewhere with a short path, such as `C:\Users\<you>\Downloads` or `C:\ufc-fight-analyzer`.
+3. **Start it.** Open the project folder and double-click **`run.bat`**.
+   If Windows shows "Windows protected your PC", click *More info → Run anyway* (`run.bat` is a short text
+   file you can open in Notepad to check first). From a terminal you can also run:
+   ```bat
+   cd path\to\ufc-fight-analyzer
+   run.bat
+   ```
+4. **Wait for the first-time setup.** A console window creates a private Python environment in the `.venv`
+   folder, installs the packages (about 1 GB, several minutes) and downloads the pose model. This happens only once.
+5. **Use the app.** When setup finishes, your browser opens the app at its local address
+   **http://127.0.0.1:8000**. That address is served by the program running in the console window: it only
+   works on this computer, and only while that window stays open. It is not a public link.
+6. **Stop it** by closing the console window, or press `Ctrl+C` in it and answer `Y` to Windows' question
+   *"Terminate batch job (Y/N)?"*. Next time, double-click `run.bat` again; it starts in a few seconds.
+
+## macOS / Linux
+
+1. **Install Python 3.13** (3.12 and 3.14 also work; 3.15 is not supported yet).
+   - macOS (Apple Silicon): the installer from https://www.python.org/downloads/macos/ , or `brew install python@3.13`
+   - Linux (Debian/Ubuntu): `sudo apt install python3.12 python3.12-venv` (or newer)
+2. **Download the project.**
+   ```bash
+   git clone https://github.com/odhabit-sys/ufc-fight-analyzer.git
+   cd ufc-fight-analyzer
+   ```
+   Or on the GitHub page click **Code → Download ZIP**, unzip it, and open a terminal in that folder.
+3. **Start it.**
+   ```bash
+   ./run.sh
+   ```
+   If you downloaded the ZIP and get "permission denied", run `bash run.sh` instead.
+4. **Wait for the first-time setup.** It creates a private Python environment in `.venv`, installs the
+   packages (about 1 GB, several minutes) and downloads the pose model. This happens only once.
+5. **Use the app.** Your browser opens the app at its local address **http://127.0.0.1:8000**. That
+   address is served by the program running in your terminal: it only works on this computer, and only
+   while that terminal keeps running. It is not a public link.
+6. **Stop it** with `Ctrl+C` in the terminal. Next time, run `./run.sh` again; it starts in a few seconds.
+
+## Start options and troubleshooting
+
+`run.bat` / `run.sh` accept these options (they are passed to `launch.py`):
+
+| Option | Effect |
+|---|---|
+| `--port 8080` | use another port (if 8000 is busy the next free port is chosen automatically and printed) |
+| `--no-browser` | don't open the browser; open the printed local address yourself |
+| `--setup-only` | install/check everything without starting the app |
+| `--reinstall` | reinstall the Python packages (fixes a damaged installation) |
+
+The start script checks everything it needs and stops with an explanation instead of failing silently:
+
+| Message | What to do |
+|---|---|
+| *Python 3.12 or newer was not found* / *is too old* | Install Python as in step 1 and start again. |
+| *Python 3.15 … is newer than PyTorch supports* | Also install Python 3.13 as in step 1 (it can sit next to 3.15); the start script then uses 3.13. |
+| *This is a 32-bit Python* | Install the 64-bit Python from python.org. |
+| *Installing the dependencies failed* | Check the internet connection and free disk space, then start again. |
+| *The project folder path is too long for Windows* | Move the folder to a shorter path (e.g. `C:\ufc-fight-analyzer`) or enable Windows long paths. |
+| *FFmpeg is not usable* | Start with `--reinstall`. |
+| *Could not download the model weights* | Check the internet connection, or download the file shown in the message manually into the project folder. |
+| *The existing '.venv' environment is broken* | Delete the `.venv` folder and start again. |
+| Browser shows "can't connect" | The program isn't running: start `run.bat` / `run.sh` again and keep its window open. |
+
+The pose model (`yolo11m-pose.pt`) is downloaded automatically from the official
+[Ultralytics releases](https://github.com/ultralytics/assets/releases) on the first start. It is not part
+of this repository. Ultralytics' code and models are licensed under AGPL-3.0.
+
+## How the web app works
+
+Upload a fight. After pose detection you click Fighter 1 (red) and Fighter 2 (blue) on a frame from the
+fight; the analysis then opens in the interactive viewer. Skeletons, stats, momentum and events are all
+drawn live from the analysis data, synced to the frame the video is showing.
 
 ```
 Browser ─upload─▶ webapp/server.py (FastAPI) ─queue─▶ webapp/jobs.py worker
@@ -33,25 +126,20 @@ Viewer (webapp/static): frame on screen = floor(video time × fps) → look up e
 "Change fighters" on the analysis page re-runs only steps 3–4 on the cached poses (seconds, no re-upload).
 Jobs are stored in `data/jobs/<id>/` and listed on the upload page, so you can reopen them without reprocessing.
 Keyboard: Space play/pause · ←/→ 1 s (Shift = 5 s) · `,` / `.` one frame · `S` toggle skeletons.
-The CLI below still works and is useful for debugging. It produces an MP4 with the HUD burned in.
 
-## Step-by-step (CLI)
+## Command-line analyzer (optional, for debugging)
 
-### 1. Setup (already done in this folder)
+The original CLI produces an MP4 with the analysis HUD burned in, plus CSV/JSON exports. It uses the same
+environment as the web app, so start the app once first (or run `python launch.py --setup-only`), then
+activate the environment:
+
 ```bash
-/Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+source .venv/bin/activate            # macOS / Linux
+.venv\Scripts\activate               # Windows (Command Prompt or PowerShell)
 ```
-Python 3.13 is used because 3.14 is too new for parts of the CV stack. The pose model downloads
-automatically on the first run, and ffmpeg comes bundled through `imageio-ffmpeg`.
 
-### 2. Get a test clip
-Put a fight clip in `videos/`. For tuning, start with **30–60 s** of a clean, wide angle, with no replays
-and no picture-in-picture graphics.
-
-### 3. Run it
+Put a fight clip in `videos/` (for tuning, start with 30–60 s of a clean, wide angle without replays) and run:
 ```bash
-source .venv/bin/activate
 python analyze.py videos/fight.mp4 --start 0 --end 60 --pick --names "Smith" "Jones"
 ```
 - `--pick` opens a window. Click Fighter 1, then Fighter 2, and press Enter (`n`/`p` jump ±1 s if the first frame is bad).
@@ -63,7 +151,6 @@ python analyze.py videos/fight.mp4 --start 0 --end 60 --pick --names "Smith" "Jo
 Useful flags: `--layout overlay` (HUD on top of the video instead of around it), `--swap`, `--preview`,
 `--model yolo11x-pose.pt --imgsz 1280` (most accurate skeletons, about 3–4× slower).
 
-### 4. Tune
 All thresholds are in [fight_analyzer/config.py](fight_analyzer/config.py) and are commented. Watch the output, then check
 `_events.json` and the CSV to see why something did or did not fire.
 
